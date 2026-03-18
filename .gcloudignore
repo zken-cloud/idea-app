@@ -1,0 +1,13 @@
+.gcloudignore
+.git
+.gitignore
+node_modules/
+.next/
+cloud-sql-proxy
+large_image.jpg
+tmp/
+*.log
+!next-env.d.ts
+!next.config.ts
+!postcss.config.js
+!tailwind.config.ts

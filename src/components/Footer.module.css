@@ -1,0 +1,32 @@
+.footer {
+  padding: 2rem;
+  border-top: 1px solid var(--border);
+  background: var(--card-background);
+  text-align: center;
+  margin-top: 2rem; /* Ensure some spacing if not at bottom */
+}
+
+.links {
+  display: flex;
+  justify-content: center;
+  gap: 1.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.link {
+  font-size: 0.875rem;
+  color: var(--gray-800);
+  text-decoration: none;
+  transition: color 0.2s;
+}
+
+.link:hover {
+  color: var(--primary);
+}
+
+.copy {
+  font-size: 0.75rem;
+  color: var(--gray-800);
+  opacity: 0.7;
+  margin: 0;
+}

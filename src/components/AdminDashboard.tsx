@@ -1,0 +1,311 @@
+"use client";
+
+import { useState } from "react";
+import Papa from "papaparse";
+import Link from "next/link";
+import styles from "./AdminDashboard.module.css";
+
+interface User {
+  id: string;
+  name: string | null;
+  email: string | null;
+  role: string | null;
+  image: string | null;
+}
+
+interface AuditLog {
+  id: string;
+  action: string;
+  details: string;
+  createdAt: Date | string;
+  userName: string;
+  userEmail: string;
+}
+
+interface AdminDashboardProps {
+  initialUsers: User[];
+  initialAuditLogs: AuditLog[];
+  isAdmin?: boolean;
+}
+
+export default function AdminDashboard({ initialUsers, initialAuditLogs, isAdmin = false }: AdminDashboardProps) {
+  const [view, setView] = useState<"users" | "audit">("users");
+  const [users, setUsers] = useState<User[]>(initialUsers);
+  const [auditLogs, setAuditLogs] = useState<AuditLog[]>(initialAuditLogs);
+  const [newUser, setNewUser] = useState({ name: "", email: "", role: "user" });
+  const [isUploading, setIsUploading] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
+
+  const handleAddUser = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const response = await fetch("/api/admin/users", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(newUser),
+    });
+
+    if (response.ok) {
+      const createdUser = await response.json();
+      setUsers([...users, createdUser]);
+      setNewUser({ name: "", email: "", role: "user" });
+    } else {
+      alert("Failed to add user");
+    }
+  };
+
+  const handleCsvUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setIsUploading(true);
+    Papa.parse(file, {
+      header: true,
+      skipEmptyLines: true,
+      complete: async (results) => {
+        console.log("Parsed CSV:", results.data);
+        const response = await fetch("/api/admin/users/batch", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(results.data),
+        });
+
+        setIsUploading(false);
+        if (response.ok) {
+          const result = await response.json();
+          alert(`Successfully uploaded ${result.count} users`);
+          // Refresh user list
+          const updatedUsers = await fetch("/api/admin/users").then((r) => r.json());
+          setUsers(updatedUsers);
+        } else {
+          alert("Failed to upload CSV");
+        }
+      },
+      error: (error) => {
+        setIsUploading(false);
+        alert(`CSV Parse Error: ${error.message}`);
+      },
+    });
+  };
+
+  const handleRoleChange = async (userId: string, newRole: string) => {
+    const response = await fetch(`/api/admin/users/${userId}/role`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ role: newRole }),
+    });
+
+    if (response.ok) {
+        const updatedUser = await response.json();
+        setUsers(users.map((u) => (u.id === userId ? updatedUser : u)));
+    } else {
+        const data = await response.json();
+        alert(data.error || "Failed to update role");
+    }
+  };
+
+  const handleDeleteUser = async (userId: string) => {
+    if (!confirm("Are you sure you want to delete this user?")) return;
+
+    const response = await fetch(`/api/admin/users/${userId}`, {
+      method: "DELETE",
+    });
+
+    if (response.ok) {
+      setUsers(users.filter((u) => u.id !== userId));
+    } else {
+      const data = await response.json();
+      alert(data.error || "Failed to delete user");
+    }
+  };
+
+  const parseDetails = (details: string) => {
+    const parts = details.split(/(post c[a-z0-9]{24}|comment c[a-z0-9]{24})/g);
+    return parts.map((part, index) => {
+      if (part.startsWith("post ")) {
+        const id = part.replace("post ", "");
+        return (
+          <span key={index}>
+            post <Link href={`/#post-${id}`} className={styles.link}>{id}</Link>
+          </span>
+        );
+      } else if (part.startsWith("comment ")) {
+        const id = part.replace("comment ", "");
+        const nextPart = parts[index + 2];
+        if (nextPart && nextPart.startsWith("post ")) {
+          const postId = nextPart.replace("post ", "");
+          return (
+            <span key={index}>
+              comment <Link href={`/#post-${postId}#comment-${id}`} className={styles.link}>{id}</Link>
+            </span>
+          );
+        }
+        return (
+          <span key={index}>
+            comment <Link href={`/#comment-${id}`} className={styles.link}>{id}</Link>
+          </span>
+        );
+      }
+      return part;
+    });
+  };
+
+  return (
+    <div className={styles.container}>
+      <div className={styles.tabs}>
+        <button
+          onClick={() => setView("users")}
+          className={view === "users" ? styles.activeTab : styles.tab}
+        >
+          User Management
+        </button>
+        <button
+          onClick={() => setView("audit")}
+          className={view === "audit" ? styles.activeTab : styles.tab}
+        >
+          Audit Logs
+        </button>
+      </div>
+
+      {view === "users" && (
+        <div className={styles.section}>
+          <h2 className={styles.sectionTitle}>User Management</h2>
+          
+          {isAdmin && (
+          <div className={styles.actions}>
+            <form onSubmit={handleAddUser} className={styles.form}>
+              <input
+                type="text"
+                placeholder="Name"
+                value={newUser.name}
+                onChange={(e) => setNewUser({ ...newUser, name: e.target.value })}
+                className={styles.input}
+                required
+              />
+              <input
+                type="email"
+                placeholder="Email"
+                value={newUser.email}
+                onChange={(e) => setNewUser({ ...newUser, email: e.target.value })}
+                className={styles.input}
+                required
+              />
+              <select
+                value={newUser.role}
+                onChange={(e) => setNewUser({ ...newUser, role: e.target.value })}
+                className={styles.select}
+              >
+                <option value="user">User</option>
+                <option value="Admin">Admin</option>
+                <option value="Moderator">Moderator</option>
+              </select>
+              <button type="submit" className={styles.button}>Add User</button>
+            </form>
+
+            <div className={styles.csvUpload}>
+              <label className={styles.uploadLabel}>
+                {isUploading ? "Uploading..." : "Upload CSV"}
+                <input
+                  type="file"
+                  accept=".csv"
+                  onChange={handleCsvUpload}
+                  className={styles.fileInput}
+                  disabled={isUploading}
+                />
+              </label>
+              <Link href="/csv_template_users.csv" className={styles.downloadLink}>
+                Download Template
+              </Link>
+            </div>
+          </div>
+          )}
+
+          <div style={{ marginBottom: "1rem" }}>
+            <input
+              type="text"
+              placeholder="Search by name or email..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className={styles.input}
+              style={{ width: "100%", maxWidth: "300px" }}
+            />
+          </div>
+
+          <table className={styles.table}>
+            <thead>
+              <tr>
+                <th>Name</th>
+                <th>Email</th>
+                <th>Role</th>
+                {isAdmin && <th>Actions</th>}
+              </tr>
+            </thead>
+            <tbody>
+              {users
+                .filter(
+                  (user) =>
+                    (user.name?.toLowerCase() || "").includes(searchTerm.toLowerCase()) ||
+                    (user.email?.toLowerCase() || "").includes(searchTerm.toLowerCase())
+                )
+                .map((user) => (
+                <tr key={user.id}>
+                  <td>{user.name}</td>
+                  <td>{user.email}</td>
+                  <td>
+                    <select
+                      value={user.role || "user"}
+                      onChange={(e) => handleRoleChange(user.id, e.target.value)}
+                      disabled={!isAdmin || user.email === "admin@local"}
+                      className={styles.select}
+                    >
+                      <option value="user">User</option>
+                      <option value="Admin">Admin</option>
+                      <option value="Moderator">Moderator</option>
+                    </select>
+                  </td>
+                  {isAdmin && (
+                  <td>
+                    <button
+                      onClick={() => handleDeleteUser(user.id)}
+                      disabled={user.email === "admin@local"}
+                      className={styles.deleteButton}
+                      style={user.email === "admin@local" ? { opacity: 0.5, cursor: "not-allowed" } : {}}
+                    >
+                      Delete
+                    </button>
+                  </td>
+                  )}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {view === "audit" && (
+        <div className={styles.section}>
+          <h2 className={styles.sectionTitle}>Audit Logs</h2>
+          <table className={styles.table}>
+            <thead>
+              <tr>
+                <th>Action</th>
+                <th>Details</th>
+                <th>User</th>
+                <th>Date</th>
+              </tr>
+            </thead>
+            <tbody>
+              {auditLogs.map((log) => (
+                <tr key={log.id}>
+                  <td>{log.action}</td>
+                  <td>{parseDetails(log.details)}</td>
+                  <td>{log.userName} ({log.userEmail})</td>
+                  <td>{new Date(log.createdAt).toLocaleString()}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  );
+}

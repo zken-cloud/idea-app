@@ -1,0 +1,69 @@
+:root {
+  --background: #131314;
+  --foreground: #e3e3e3;
+  --primary: #a8c7fa;
+  --primary-hover: #7cacf8;
+  --secondary: #c4eed0;
+  --error: #f2b8b5;
+  --gray-100: #28292a;
+  --gray-200: #3c4043;
+  --gray-300: #5f6368;
+  --gray-800: #c4c7c5;
+  --card-background: #1e1f20;
+  --card-foreground: #e3e3e3;
+  --border: #444746;
+  --radius: 0.5rem;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: #131314;
+    --foreground: #e3e3e3;
+    --primary: #a8c7fa;
+    --primary-hover: #7cacf8;
+    --secondary: #c4eed0;
+    --error: #f2b8b5;
+    --gray-100: #28292a;
+    --gray-200: #3c4043;
+    --gray-300: #5f6368;
+    --gray-800: #c4c7c5;
+    --card-background: #1e1f20;
+    --card-foreground: #e3e3e3;
+    --border: #444746;
+  }
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+  min-height: 100vh;
+  margin: 0;
+  padding: 0;
+}
+
+.container {
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 2rem;
+}
+
+@media (max-width: 640px) {
+  .container {
+    padding: 1rem;
+  }
+  
+  h1 {
+    font-size: 1.5rem;
+  }
+}
+
+.main {
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+}
+
+nextjs-portal {
+  display: none !important;
+}
