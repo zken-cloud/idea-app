@@ -45,6 +45,7 @@ export default function Search() {
       >
         <option value="upvotes">Top Rated</option>
         <option value="newest">Newest</option>
+        <option value="actioned">Actioned Posts</option>
       </select>
       <button type="submit" className={styles.button}>
         Search

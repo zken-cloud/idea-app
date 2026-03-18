@@ -22,7 +22,10 @@ export default async function PostList({ searchQuery, sort = "upvotes" }: PostLi
           { content: { contains: searchQuery, mode: "insensitive" as const } },
           { user: { name: { contains: searchQuery, mode: "insensitive" as const } } },
         ],
+        ...(sort === "actioned" ? { actioned: true } : {}),
       }
+    : sort === "actioned"
+    ? { actioned: true }
     : undefined;
     
   console.log("PostList: whereClause =", JSON.stringify(whereClause));

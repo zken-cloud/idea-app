@@ -19,6 +19,7 @@ export default function PostItem({ post, user }: PostItemProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [editContent, setEditContent] = useState(post.content);
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
+  const [isActioned, setIsActioned] = useState(post.actioned || false);
   const router = useRouter();
 
   const isAuthor = post.userId === user?.id;
@@ -67,8 +68,29 @@ export default function PostItem({ post, user }: PostItemProps) {
     }
   };
 
+  const handleToggleActioned = async () => {
+    try {
+      const response = await fetch(`/api/posts/${post.id}/action`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ actioned: !isActioned }),
+      });
+
+      if (response.ok) {
+        setIsActioned(!isActioned);
+        router.refresh();
+      } else {
+        const data = await response.json();
+        alert(data.error || "Failed to toggle action status");
+      }
+    } catch (error) {
+      console.error("Error toggling action status:", error);
+      alert("An error occurred while toggling the action status");
+    }
+  };
+
   return (
-    <div className={styles.post}>
+    <div className={`${styles.post} ${isActioned ? styles.postActioned : ""}`}>
       <div className={styles.header}>
         <div className={styles.headerLeft}>
           <div className={styles.userInfo}>
@@ -141,19 +163,31 @@ export default function PostItem({ post, user }: PostItemProps) {
         </div>
       )}
       <div className={styles.footer}>
-        <span className={styles.stat}>{post._count.comments} Comments</span>
-        
-        <VoteButtons
-          postId={post.id}
-          initialUpvotes={post.votes.filter((v: any) => v.type === "UPVOTE").length}
-          initialDownvotes={post.votes.filter((v: any) => v.type === "DOWNVOTE").length}
-          initialUserVote={
-            user
-              ? (post.votes.find((v: any) => v.userId === user.id)?.type as "UPVOTE" | "DOWNVOTE")
-              : null
-          }
-        />
-        <SummarizeButton postId={post.id} />
+        <div className={styles.footerLeft}>
+          <span className={styles.stat}>{post._count?.comments || 0} Comments</span>
+          
+          <VoteButtons
+            postId={post.id}
+            initialUpvotes={post.votes?.filter((v: any) => v.type === "UPVOTE").length || 0}
+            initialDownvotes={post.votes?.filter((v: any) => v.type === "DOWNVOTE").length || 0}
+            initialUserVote={
+              user
+                ? (post.votes?.find((v: any) => v.userId === user.id)?.type as "UPVOTE" | "DOWNVOTE")
+                : null
+            }
+          />
+        </div>
+        <div className={styles.footerRight}>
+          <SummarizeButton postId={post.id} />
+          {canDelete && (
+            <button
+              onClick={handleToggleActioned}
+              className={`${styles.actionButton} ${isActioned ? styles.actionButtonActive : ""}`}
+            >
+              {isActioned ? "Actioned" : "Mark as Actioned"}
+            </button>
+          )}
+        </div>
       </div>
       
       <hr className={styles.divider} />

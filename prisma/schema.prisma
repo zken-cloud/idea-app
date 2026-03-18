@@ -62,6 +62,7 @@ model Post {
   id        String    @id @default(cuid())
   content   String
   images    String?   // Comma-separated image URLs (SQLite fallback)
+  actioned  Boolean   @default(false)
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
   userId    String
