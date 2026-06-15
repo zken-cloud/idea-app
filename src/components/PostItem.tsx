@@ -6,7 +6,6 @@ import Image from "next/image";
 import CommentForm from "./CommentForm";
 import CommentSection from "./CommentSection";
 import VoteButtons from "./VoteButtons";
-import SummarizeButton from "./SummarizeButton";
 import styles from "./PostItem.module.css";
 
 interface PostItemProps {
@@ -178,7 +177,6 @@ export default function PostItem({ post, user }: PostItemProps) {
           />
         </div>
         <div className={styles.footerRight}>
-          <SummarizeButton postId={post.id} />
           {canDelete && (
             <button
               onClick={handleToggleActioned}
