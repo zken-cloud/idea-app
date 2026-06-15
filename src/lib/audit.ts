@@ -7,7 +7,6 @@ export async function logAudit(
   details: string,
   user: { id: string; name?: string | null; email?: string | null }
 ) {
-  console.log(`Audit Log: ${action} - ${details}`, { user });
   return prisma.auditLog.create({
     data: {
       action,

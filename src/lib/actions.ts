@@ -8,6 +8,34 @@ import { uploadFile } from "@/lib/storage";
 import { logAuditServerAction } from "./audit";
 import crypto from "crypto";
 
+// Detect the real image type from magic bytes, ignoring the client-supplied
+// content-type/filename. Returns the canonical mime + extension, or null if the
+// bytes are not an allowed image. This prevents uploading e.g. text/html or SVG
+// payloads to the public bucket (stored-XSS / phishing host).
+function detectImage(buffer: Buffer): { mime: string; ext: string } | null {
+  if (buffer.length >= 3 && buffer[0] === 0xff && buffer[1] === 0xd8 && buffer[2] === 0xff) {
+    return { mime: "image/jpeg", ext: "jpg" };
+  }
+  if (
+    buffer.length >= 8 &&
+    buffer[0] === 0x89 && buffer[1] === 0x50 && buffer[2] === 0x4e && buffer[3] === 0x47 &&
+    buffer[4] === 0x0d && buffer[5] === 0x0a && buffer[6] === 0x1a && buffer[7] === 0x0a
+  ) {
+    return { mime: "image/png", ext: "png" };
+  }
+  if (buffer.length >= 6 && buffer.toString("ascii", 0, 6).match(/^GIF8[79]a$/)) {
+    return { mime: "image/gif", ext: "gif" };
+  }
+  if (
+    buffer.length >= 12 &&
+    buffer.toString("ascii", 0, 4) === "RIFF" &&
+    buffer.toString("ascii", 8, 12) === "WEBP"
+  ) {
+    return { mime: "image/webp", ext: "webp" };
+  }
+  return null;
+}
+
 export async function createPost(formData: FormData) {
   const session = await getServerSession(authOptions);
   if (!session || !session.user) {
@@ -35,12 +63,14 @@ export async function createPost(formData: FormData) {
     }
     if (file.size > 0) {
       const buffer = Buffer.from(await file.arrayBuffer());
-      const ext = file.name.split('.').pop() || 'tmp';
-      const filename = `${Date.now()}_${crypto.randomUUID()}.${ext}`;
-      const mimeType = file.type;
-      
+      const detected = detectImage(buffer);
+      if (!detected) {
+        throw new Error("Only JPEG, PNG, GIF, or WebP images are allowed");
+      }
+      const filename = `${Date.now()}_${crypto.randomUUID()}.${detected.ext}`;
+
       try {
-        const url = await uploadFile(buffer, filename, mimeType);
+        const url = await uploadFile(buffer, filename, detected.mime);
         imageUrls.push(url);
       } catch (err) {
         console.error(`Failed to upload ${file.name}:`, err);

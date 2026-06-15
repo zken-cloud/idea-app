@@ -1,18 +1,20 @@
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { redirect } from "next/navigation";
-import { PrismaClient } from "@prisma/client";
+import { prisma } from "@/lib/db";
 import AdminDashboard from "@/components/AdminDashboard";
-
-const prisma = new PrismaClient();
 
 export default async function AdminPage() {
   const session = await getServerSession(authOptions);
 
+  if (!session) {
+    redirect("/");
+  }
+
   const isAdmin = session.user?.role === "Admin" || session.user?.email === "admin@local";
   const isModerator = session.user?.role === "Moderator";
 
-  if (!session || (!isAdmin && !isModerator)) {
+  if (!isAdmin && !isModerator) {
     redirect("/");
   }
 

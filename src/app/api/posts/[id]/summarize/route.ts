@@ -3,6 +3,7 @@ import { prisma } from "@/lib/db";
 import { summarizePost } from "@/lib/gemini";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
+import { rateLimit } from "@/lib/rateLimit";
 
 export async function POST(
   request: Request,
@@ -11,12 +12,18 @@ export async function POST(
   const resolvedParams = await params;
   const postId = resolvedParams.id;
 
-  console.log("Summarize API called for post:", postId);
   const session = await getServerSession(authOptions);
 
-  if (!session) {
-    console.log("Summarize API: Unauthorized");
+  if (!session?.user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  // Throttle the paid Gemini call (also limits SSRF/abuse surface) per user.
+  if (!rateLimit(`summarize:${session.user.id}`, 10, 60 * 1000)) {
+    return NextResponse.json(
+      { error: "Too many requests. Please slow down." },
+      { status: 429 }
+    );
   }
 
   try {
@@ -25,21 +32,17 @@ export async function POST(
     });
 
     if (!post) {
-      console.log("Summarize API: Post not found:", postId);
       return NextResponse.json({ error: "Post not found" }, { status: 404 });
     }
 
-    console.log("Summarize API: Generating summary for post:", postId);
     const imageUrls = post.images ? post.images.split(',') : [];
     const summary = await summarizePost(post.content, imageUrls);
-    console.log("Summarize API: Summary generated");
 
     return NextResponse.json({ summary });
-  } catch (error: any) {
+  } catch (error) {
     console.error("Summarization API Error:", error);
-    const errorMessage = error.message || "Failed to generate summary";
     return NextResponse.json(
-      { error: errorMessage },
+      { error: "Failed to generate summary" },
       { status: 500 }
     );
   }

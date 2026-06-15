@@ -40,13 +40,11 @@ export default function SettingsPage() {
     setError(null);
     setIsSubmitting(true);
 
-    console.log("Submitting login form...");
     const result = await signIn("credentials", {
       username,
       password,
       redirect: false,
     });
-    console.log("Login result", result);
 
     if (result?.error) {
       setError("Invalid credentials");

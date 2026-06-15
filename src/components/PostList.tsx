@@ -1,10 +1,8 @@
-import { PrismaClient } from "@prisma/client";
+import { prisma } from "@/lib/db";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import PostItem from "./PostItem";
 import styles from "./PostList.module.css";
-
-const prisma = new PrismaClient();
 
 interface PostListProps {
   searchQuery?: string;

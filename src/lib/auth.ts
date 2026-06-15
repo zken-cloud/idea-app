@@ -5,7 +5,7 @@ import CredentialsProvider from "next-auth/providers/credentials";
 import GoogleProvider from "next-auth/providers/google";
 import bcrypt from "bcryptjs";
 import { logAudit } from "./audit";
-import fs from 'fs';
+import { rateLimit } from "./rateLimit";
 
 export const authOptions = {
   adapter: PrismaAdapter(prisma),
@@ -22,21 +22,22 @@ export const authOptions = {
         password: { label: "Password", type: "password" },
       },
       async authorize(credentials, req) {
-        console.log("Authorize called", { username: credentials?.username });
         if (!credentials) return null;
+
+        // Rate limit credential attempts per username to slow brute-force
+        if (!rateLimit(`login:${credentials.username}`, 5, 15 * 60 * 1000)) {
+          throw new Error("Too many login attempts. Please try again later.");
+        }
 
         // Local Admin Check
         if (credentials.username === "admin") {
-          console.log("Local Admin password check...");
           const adminPassword = process.env.LOCAL_ADMIN_PASSWORD;
           if (adminPassword && credentials.password === adminPassword) {
-            console.log("Local Admin password correct. Checking DB user...");
             let user = await prisma.user.findUnique({
               where: { email: "admin@local" },
             });
 
             if (!user) {
-              console.log("Creating Admin user in DB...");
               user = await prisma.user.create({
                 data: {
                   email: "admin@local",
@@ -46,10 +47,7 @@ export const authOptions = {
               });
             }
 
-            console.log("Admin user ready", user);
             return user;
-          } else {
-            console.log("Local Admin password incorrect or missing");
           }
         }
 
@@ -65,11 +63,9 @@ export const authOptions = {
   ],
   events: {
     async signIn({ user, account, profile, isNewUser }: any) {
-      console.log("Sign In Event", { user });
       await logAudit("SIGN_IN", `User ${user.email} signed in`, user);
     },
     async signOut({ token }: any) {
-      console.log("Sign Out Event", { token });
       if (token?.sub) {
         await logAudit("SIGN_OUT", `User ${token.email} signed out`, {
           id: token.sub,
@@ -109,6 +105,7 @@ export const authOptions = {
       return session;
     },
   },
+  secret: process.env.NEXTAUTH_SECRET,
   session: {
     strategy: "jwt" as const,
     maxAge: 8 * 60 * 60, // 8 hours

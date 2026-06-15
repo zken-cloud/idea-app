@@ -1,9 +1,7 @@
-import { PrismaClient } from "@prisma/client";
+import { prisma } from "@/lib/db";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { NextResponse } from "next/server";
-
-const prisma = new PrismaClient();
 
 export async function POST(request: Request) {
   const session = await getServerSession(authOptions);
@@ -48,7 +46,8 @@ export async function POST(request: Request) {
     });
 
     return NextResponse.json({ count: result.length });
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  } catch (error) {
+    console.error("Failed to batch upload users:", error);
+    return NextResponse.json({ error: "Failed to process upload" }, { status: 500 });
   }
 }

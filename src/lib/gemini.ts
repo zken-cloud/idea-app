@@ -40,6 +40,21 @@ export const generationConfig = {
   ],
 };
 
+// Only allow fetching images from our own public GCS bucket host. This blocks
+// SSRF (e.g. cloud metadata at 169.254.169.254, internal services, localhost)
+// since post image URLs are always written as storage.googleapis.com/<bucket>/...
+const ALLOWED_IMAGE_HOST = 'storage.googleapis.com';
+const MAX_IMAGE_BYTES = 10 * 1024 * 1024; // 10MB
+
+function isAllowedImageUrl(raw: string): boolean {
+  try {
+    const url = new URL(raw);
+    return url.protocol === 'https:' && url.hostname === ALLOWED_IMAGE_HOST;
+  } catch {
+    return false;
+  }
+}
+
 export async function summarizePost(content: string, imageUrls?: string[]): Promise<string> {
   const prompt = `Summarize the following post and the attached images. Keep it concise. Max 3 sentences.\n\nPost Content:\n${content}`;
 
@@ -47,10 +62,26 @@ export async function summarizePost(content: string, imageUrls?: string[]): Prom
 
   if (imageUrls && imageUrls.length > 0) {
     for (const url of imageUrls) {
-      if (!url.trim()) continue;
+      const trimmed = url.trim();
+      if (!trimmed) continue;
+      if (!isAllowedImageUrl(trimmed)) {
+        console.error("Skipping disallowed image URL for summarization");
+        continue;
+      }
       try {
-        const response = await fetch(url.trim());
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 10000);
+        const response = await fetch(trimmed, {
+          redirect: "error",
+          signal: controller.signal,
+        });
+        clearTimeout(timeout);
+
         const buffer = await response.arrayBuffer();
+        if (buffer.byteLength > MAX_IMAGE_BYTES) {
+          console.error("Skipping oversized image for summarization");
+          continue;
+        }
         const base64 = Buffer.from(buffer).toString("base64");
         const mimeType = response.headers.get("content-type") || "image/jpeg";
         parts.push({
@@ -60,7 +91,7 @@ export async function summarizePost(content: string, imageUrls?: string[]): Prom
           },
         });
       } catch (e) {
-        console.error("Failed to fetch image for summarization:", url, e);
+        console.error("Failed to fetch image for summarization:", e);
       }
     }
   }
