@@ -40,6 +40,7 @@ export default function AdminDashboard({ initialUsers, initialAuditLogs, initial
   const [auditLogs, setAuditLogs] = useState<AuditLog[]>(initialAuditLogs);
   const [recipients, setRecipients] = useState<SummaryRecipient[]>(initialRecipients);
   const [newRecipient, setNewRecipient] = useState("");
+  const [isSending, setIsSending] = useState(false);
   const [newUser, setNewUser] = useState({ name: "", email: "", role: "user" });
   const [isUploading, setIsUploading] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
@@ -67,6 +68,21 @@ export default function AdminDashboard({ initialUsers, initialAuditLogs, initial
       setRecipients(recipients.filter((r) => r.id !== id));
     } else {
       alert("Failed to remove recipient");
+    }
+  };
+
+  const handleSendNow = async () => {
+    setIsSending(true);
+    try {
+      const response = await fetch("/api/admin/send-summary", { method: "POST" });
+      const data = await response.json();
+      if (response.ok) {
+        alert(`Summary sent to ${data.recipients} recipient(s).`);
+      } else {
+        alert(data.error || "Failed to send summary");
+      }
+    } finally {
+      setIsSending(false);
     }
   };
 
@@ -374,6 +390,16 @@ export default function AdminDashboard({ initialUsers, initialAuditLogs, initial
               )}
             </tbody>
           </table>
+
+          <div style={{ marginTop: "1.5rem", borderTop: "1px solid #eee", paddingTop: "1.5rem" }}>
+            <h3 style={{ marginTop: 0 }}>Send on demand</h3>
+            <p style={{ color: "#666", marginTop: 0 }}>
+              Immediately send the summary email (covering the last 7 days) to the recipients above.
+            </p>
+            <button onClick={handleSendNow} disabled={isSending} className={styles.button}>
+              {isSending ? "Sending..." : "Send Summary Now"}
+            </button>
+          </div>
         </div>
       )}
 
