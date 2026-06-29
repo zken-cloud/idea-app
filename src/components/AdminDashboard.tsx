@@ -22,19 +22,53 @@ interface AuditLog {
   userEmail: string;
 }
 
+interface SummaryRecipient {
+  id: string;
+  email: string;
+}
+
 interface AdminDashboardProps {
   initialUsers: User[];
   initialAuditLogs: AuditLog[];
+  initialRecipients: SummaryRecipient[];
   isAdmin?: boolean;
 }
 
-export default function AdminDashboard({ initialUsers, initialAuditLogs, isAdmin = false }: AdminDashboardProps) {
-  const [view, setView] = useState<"users" | "audit">("users");
+export default function AdminDashboard({ initialUsers, initialAuditLogs, initialRecipients, isAdmin = false }: AdminDashboardProps) {
+  const [view, setView] = useState<"users" | "audit" | "notifications">("users");
   const [users, setUsers] = useState<User[]>(initialUsers);
   const [auditLogs, setAuditLogs] = useState<AuditLog[]>(initialAuditLogs);
+  const [recipients, setRecipients] = useState<SummaryRecipient[]>(initialRecipients);
+  const [newRecipient, setNewRecipient] = useState("");
   const [newUser, setNewUser] = useState({ name: "", email: "", role: "user" });
   const [isUploading, setIsUploading] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
+
+  const handleAddRecipient = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const response = await fetch("/api/admin/summary-recipients", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email: newRecipient }),
+    });
+    if (response.ok) {
+      const created = await response.json();
+      setRecipients([...recipients, created]);
+      setNewRecipient("");
+    } else {
+      const data = await response.json();
+      alert(data.error || "Failed to add recipient");
+    }
+  };
+
+  const handleDeleteRecipient = async (id: string) => {
+    const response = await fetch(`/api/admin/summary-recipients/${id}`, { method: "DELETE" });
+    if (response.ok) {
+      setRecipients(recipients.filter((r) => r.id !== id));
+    } else {
+      alert("Failed to remove recipient");
+    }
+  };
 
   const handleAddUser = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -164,6 +198,14 @@ export default function AdminDashboard({ initialUsers, initialAuditLogs, isAdmin
         >
           Audit Logs
         </button>
+        {isAdmin && (
+          <button
+            onClick={() => setView("notifications")}
+            className={view === "notifications" ? styles.activeTab : styles.tab}
+          >
+            Weekly Summary
+          </button>
+        )}
       </div>
 
       {view === "users" && (
@@ -276,6 +318,60 @@ export default function AdminDashboard({ initialUsers, initialAuditLogs, isAdmin
                   )}
                 </tr>
               ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {view === "notifications" && isAdmin && (
+        <div className={styles.section}>
+          <h2 className={styles.sectionTitle}>Weekly Summary Recipients</h2>
+          <p style={{ color: "#666", marginTop: 0 }}>
+            These addresses receive the weekly summary email (Mondays). If the list is empty,
+            it defaults to all users with the Admin role.
+          </p>
+
+          <form onSubmit={handleAddRecipient} className={styles.form}>
+            <input
+              type="email"
+              placeholder="recipient@example.com"
+              value={newRecipient}
+              onChange={(e) => setNewRecipient(e.target.value)}
+              className={styles.input}
+              required
+            />
+            <button type="submit" className={styles.button}>Add Recipient</button>
+          </form>
+
+          <table className={styles.table}>
+            <thead>
+              <tr>
+                <th>Email</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {recipients.length === 0 ? (
+                <tr>
+                  <td colSpan={2} style={{ color: "#888" }}>
+                    No recipients configured — defaulting to all Admin users.
+                  </td>
+                </tr>
+              ) : (
+                recipients.map((r) => (
+                  <tr key={r.id}>
+                    <td>{r.email}</td>
+                    <td>
+                      <button
+                        onClick={() => handleDeleteRecipient(r.id)}
+                        className={styles.deleteButton}
+                      >
+                        Remove
+                      </button>
+                    </td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>

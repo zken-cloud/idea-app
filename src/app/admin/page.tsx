@@ -34,10 +34,15 @@ export default async function AdminPage() {
     take: 50,
   });
 
+  const summaryRecipients = await prisma.summaryRecipient.findMany({
+    orderBy: { createdAt: "asc" },
+    select: { id: true, email: true },
+  });
+
   return (
     <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '1rem' }}>
       <h1 className="text-2xl font-bold mb-4">Admin Dashboard</h1>
-      <AdminDashboard initialUsers={users} initialAuditLogs={auditLogs} isAdmin={isAdmin} />
+      <AdminDashboard initialUsers={users} initialAuditLogs={auditLogs} initialRecipients={summaryRecipients} isAdmin={isAdmin} />
     </div>
   );
 }

@@ -99,6 +99,12 @@ model Vote {
   @@unique([userId, postId, commentId]) // A user can only vote once per post/comment
 }
 
+model SummaryRecipient {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  createdAt DateTime @default(now())
+}
+
 model AuditLog {
   id        String   @id @default(cuid())
   action    String
