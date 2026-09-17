@@ -23,7 +23,7 @@ flowchart TD
         end
         
         subgraph Networking
-            VPC[Serverless VPC Access\ntalent-app-vpc-cx]
+            VPC[Serverless VPC Access\nConnector]
         end
         
         subgraph CI/CD
@@ -54,6 +54,10 @@ flowchart TD
     *   `GOOGLE_CLIENT_SECRET`
 *   **Cloud Build**: The continuous integration and delivery pipeline defined in `cloudbuild.yaml`. It continuously monitors branches, builds Docker images, pushes them to the Container Registry, and deploys the new revisions directly to Cloud Run.
 
+### Bring your own project and secrets
+
+This repository does not include any Google Cloud project IDs, bucket names, hostnames or credentials. To deploy it you need your own GCP project with Cloud Run, Cloud SQL and Secret Manager, a Google OAuth client, and (for the weekly summary e-mail) a service account with Gmail domain-wide delegation. Every setting the app reads is an environment variable; see `.env.example` for the full list. `cloudbuild.yaml` is intentionally not tracked - write your own for your project.
+
 ## Development Stack
 
 *   **Frontend**: Next.js, React
@@ -69,7 +73,7 @@ First, install dependencies:
 npm install
 ```
 
-Ensure your environment variables (like `DATABASE_URL` and Auth credentials) are configured in a `.env` file, then run the development server:
+Copy `.env.example` to `.env` and fill in the values (`DATABASE_URL`, Google OAuth credentials, etc.), then run the development server:
 
 ```bash
 npm run dev

@@ -2,12 +2,17 @@ import { Storage } from '@google-cloud/storage';
 import path from 'path';
 
 const storage = new Storage({
-  projectId: process.env.GOOGLE_CLOUD_PROJECT || 'zken-genai',
+  projectId: process.env.GOOGLE_CLOUD_PROJECT,
 });
 
-const BUCKET_NAME = 'idea-app-static-content';
+function bucketName(): string {
+  const name = process.env.GCS_BUCKET;
+  if (!name) throw new Error('GCS_BUCKET environment variable is not set');
+  return name;
+}
 
 export async function uploadFile(fileBuffer: Buffer, filename: string, mimeType?: string): Promise<string> {
+  const BUCKET_NAME = bucketName();
   const bucket = storage.bucket(BUCKET_NAME);
   const blob = bucket.file(filename);
 
@@ -27,6 +32,7 @@ export async function uploadFile(fileBuffer: Buffer, filename: string, mimeType?
 }
 
 export async function uploadFileFromPath(filePath: string, filename?: string): Promise<string> {
+  const BUCKET_NAME = bucketName();
   const bucket = storage.bucket(BUCKET_NAME);
   const destFilename = filename || path.basename(filePath);
   

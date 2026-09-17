@@ -95,7 +95,7 @@ export async function buildWeeklySummary(): Promise<WeeklySummary> {
       <tbody>${rows}</tbody>
     </table>
     <p style="margin-top:24px;">
-      <a href="https://idea.cedemo.app/" style="background:#4a5568;color:#fff;padding:10px 16px;border-radius:6px;text-decoration:none;">Open Idea App</a>
+      <a href="${process.env.NEXTAUTH_URL}" style="background:#4a5568;color:#fff;padding:10px 16px;border-radius:6px;text-decoration:none;">Open Idea App</a>
     </p>
     <p style="color:#aaa;font-size:12px;margin-top:24px;">You're receiving this because you're an admin of Idea App.</p>
   </div>`;

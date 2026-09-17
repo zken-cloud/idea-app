@@ -42,3 +42,9 @@ next-env.d.ts
 
 /src/generated/prisma
 cloudbuild.yaml
+
+# local sqlite dev databases
+prisma/*.db
+
+# keep the env template tracked
+!.env.example
